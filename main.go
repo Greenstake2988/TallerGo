@@ -25,11 +25,31 @@ var albums = []album{
 }
 
 func getAlbums(c *gin.Context) {
+
+	db, err := gorm.Open(sqlite.Open("albums.sqlite"), &gorm.Config{})
+
+	if err != nil {
+		return
+	}
+
+	var albums []album
+	result := db.Find(&albums)
+
+	if result.Error != nil {
+		return
+	}
 	c.IndentedJSON(200, albums)
 }
 
 // postAlbums adds an album from JSON received in the request body.
 func postAlbums(c *gin.Context) {
+
+	db, err := gorm.Open(sqlite.Open("albums.sqlite"), &gorm.Config{})
+
+	if err != nil {
+		return
+	}
+
 	var newAlbum album
 
 	// Call BindJSON to bind the received JSON to
@@ -39,7 +59,8 @@ func postAlbums(c *gin.Context) {
 	}
 
 	// Add the new album to the slice.
-	albums = append(albums, newAlbum)
+	//albums = append(albums, newAlbum)
+	db.Create(&newAlbum)
 	c.IndentedJSON(http.StatusCreated, newAlbum)
 }
 
@@ -48,15 +69,19 @@ func postAlbums(c *gin.Context) {
 func getAlbumByID(c *gin.Context) {
 	id := c.Param("id")
 
-	// Loop over the list of albums, looking for
-	// an album whose ID value matches the parameter.
-	for _, a := range albums {
-		if a.ID == id {
-			c.IndentedJSON(http.StatusOK, a)
-			return
-		}
+	db, err := gorm.Open(sqlite.Open("albums.sqlite"), &gorm.Config{})
+
+	if err != nil {
+		return
 	}
-	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "album not found"})
+	var album album
+
+	err = db.First(&album, id).Error
+
+	if err != nil {
+		return
+	}
+	c.IndentedJSON(http.StatusOK, &album)
 }
 
 func main() {
@@ -67,6 +92,8 @@ func main() {
 	}
 
 	db.AutoMigrate(&album{})
+
+	db.Create(&albums)
 
 	r := gin.Default()
 	r.GET("/albums", getAlbums)
