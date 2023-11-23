@@ -17,13 +17,6 @@ type album struct {
 	Price  float64 `json:"price"`
 }
 
-// albums slice to seed record album data.
-var albums = []album{
-	{ID: "1", Title: "Blue Train", Artist: "John Coltrane", Price: 56.99},
-	{ID: "2", Title: "Jeru", Artist: "Gerry Mulligan", Price: 17.99},
-	{ID: "3", Title: "Sarah Vaughan and Clifford Brown", Artist: "Sarah Vaughan", Price: 39.99},
-}
-
 func getAlbums(c *gin.Context) {
 
 	db, err := gorm.Open(sqlite.Open("albums.sqlite"), &gorm.Config{})
@@ -45,21 +38,15 @@ func getAlbums(c *gin.Context) {
 func postAlbums(c *gin.Context) {
 
 	db, err := gorm.Open(sqlite.Open("albums.sqlite"), &gorm.Config{})
-
 	if err != nil {
 		return
 	}
 
 	var newAlbum album
-
-	// Call BindJSON to bind the received JSON to
-	// newAlbum.
 	if err := c.BindJSON(&newAlbum); err != nil {
 		return
 	}
 
-	// Add the new album to the slice.
-	//albums = append(albums, newAlbum)
 	db.Create(&newAlbum)
 	c.IndentedJSON(http.StatusCreated, newAlbum)
 }
@@ -84,6 +71,28 @@ func getAlbumByID(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, &album)
 }
 
+func deleteAlbumByID(c *gin.Context) {
+
+	id := c.Param("id")
+
+	db, err := gorm.Open(sqlite.Open("albums.sqlite"), &gorm.Config{})
+
+	if err != nil {
+		return
+	}
+
+	err = db.Delete(&album{}, id).Error
+
+	if err != nil {
+		return
+	}
+
+	c.IndentedJSON(http.StatusOK, gin.H{
+		"mensaje": "Elemento borrado correctamente",
+	})
+
+}
+
 func main() {
 	db, err := gorm.Open(sqlite.Open("albums.sqlite"), &gorm.Config{})
 
@@ -93,12 +102,11 @@ func main() {
 
 	db.AutoMigrate(&album{})
 
-	db.Create(&albums)
-
 	r := gin.Default()
 	r.GET("/albums", getAlbums)
 	r.POST("/albums", postAlbums)
 	r.GET("/albums/:id", getAlbumByID)
+	r.DELETE("/albums/:id", deleteAlbumByID)
 
 	r.Run() // listen and serve on 0.0.0.0:8080
 }
